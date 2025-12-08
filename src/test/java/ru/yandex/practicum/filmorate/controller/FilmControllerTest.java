@@ -1,14 +1,18 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import ru.yandex.practicum.filmorate.exception.ValidateException;
 import ru.yandex.practicum.filmorate.model.Film;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -16,18 +20,22 @@ import static org.junit.jupiter.api.Assertions.*;
 public class FilmControllerTest {
 
     private FilmController filmController;
+    private static final ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+    private static final Validator validator = factory.getValidator();
+
 
     @BeforeEach
     void setUp() {
         filmController = new FilmController();
     }
 
+
     private Film validFilm() {
         Film film = new Film();
         film.setName("Test Film");
         film.setDescription("Описание фильма");
         film.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film.setDuration(Duration.ofMinutes(120));
+        film.setDuration(120);
         return film;
     }
 
@@ -39,7 +47,7 @@ public class FilmControllerTest {
 
     private Film filmWithNegativeDuration() {
         Film film = validFilm();
-        film.setDuration(Duration.ofMinutes(-10));
+        film.setDuration(-10);
         return film;
     }
 
@@ -62,25 +70,38 @@ public class FilmControllerTest {
     }
 
     @Test
-    void createFilm_ShouldThrowValidateException_WhenNameEmpty() {
-        ValidateException exception = assertThrows(ValidateException.class,
-                () -> filmController.create(filmWithEmptyName()));
+    void createFilm_ShouldFail_WhenNameEmpty() {
+        Film film = filmWithEmptyName();
 
-        assertTrue(exception.getMessage().contains("название не может быть пустым"));
+        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+        assertFalse(violations.isEmpty());
+
+        boolean hasNameError = violations.stream()
+                .anyMatch(v -> v.getPropertyPath().toString().equals("name"));
+        assertTrue(hasNameError, "Фильм с пустым именем должен вызвать ошибку валидации");
     }
 
     @Test
-    void createFilm_ShouldThrowValidateException_WhenDurationNegative() {
-        ValidateException exception = assertThrows(ValidateException.class,
-                () -> filmController.create(filmWithNegativeDuration()));
+    void createFilm_ShouldFail_WhenDurationNotPositive() {
+        Film film = filmWithNegativeDuration();
 
-        assertTrue(exception.getMessage().contains("продолжительность фильма должна быть положительным числом"));
+        Set<ConstraintViolation<Film>> violations = validator.validate(film);
+
+        assertFalse(violations.isEmpty());
+
+        boolean hasDurationError = violations.stream()
+                .anyMatch(v -> v.getPropertyPath().toString().equals("duration") &&
+                        v.getMessage().contains("положительным числом"));
+        assertTrue(hasDurationError, "Фильм с нулевой длительностью должен вызвать ошибку валидации");
     }
 
     @Test
     void createFilm_ShouldThrowValidateException_WhenReleaseDateTooEarly() {
+        Film film = filmWithTooEarlyReleaseDate();
+
         ValidateException exception = assertThrows(ValidateException.class,
-                () -> filmController.create(filmWithTooEarlyReleaseDate()));
+                () -> filmController.create(film));
 
         assertTrue(exception.getMessage().contains("дата релиза — не раньше 28 декабря 1895 года"));
     }
@@ -93,12 +114,12 @@ public class FilmControllerTest {
         Film updatedFilm = validFilm();
         updatedFilm.setId(created.getId());
         updatedFilm.setName("New Name");
-        updatedFilm.setDuration(Duration.ofMinutes(150));
+        updatedFilm.setDuration(150);
 
         Film updated = filmController.update(updatedFilm);
 
         assertEquals("New Name", updated.getName());
-        assertEquals(150, updated.getDuration().toMinutes());
+        assertEquals(150, updated.getDuration());
     }
 
     @Test

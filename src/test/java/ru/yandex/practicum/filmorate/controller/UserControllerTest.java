@@ -1,5 +1,9 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.exception.ValidateException;
@@ -7,12 +11,16 @@ import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+
 
 class UserControllerTest {
 
     private UserController userController;
+    private static final ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+    private static final Validator validator = factory.getValidator();
 
     @BeforeEach
     void setUp() {
@@ -53,11 +61,18 @@ class UserControllerTest {
     }
 
     @Test
-    void createUser_ShouldThrowValidateException_WhenEmailInvalid() {
+    void createUser_ShouldFail_WhenEmailInvalid() {
         User user = createUserWithInvalidEmail();
-        ValidateException exception = assertThrows(ValidateException.class,
-                () -> userController.create(user));
-        assertTrue(exception.getMessage().contains("Электронная почта не может быть пустой"));
+
+        Set<ConstraintViolation<User>> violations = validator.validate(user);
+
+        assertFalse(violations.isEmpty(), "Должны быть ошибки валидации");
+
+        boolean hasEmailError = violations.stream()
+                .anyMatch(v -> v.getPropertyPath().toString().equals("email") &&
+                        v.getMessage().contains("должна содержать символ '@'"));
+
+        assertTrue(hasEmailError, "Email без '@' должен вызвать ошибку валидации");
     }
 
     @Test
