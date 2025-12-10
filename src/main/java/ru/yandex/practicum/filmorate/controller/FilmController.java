@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.ValidateException;
 import ru.yandex.practicum.filmorate.model.Film;
 
-import java.time.LocalDate;
 import java.util.*;
 
 @RestController
@@ -20,7 +19,6 @@ public class FilmController {
     @PostMapping
     public Film create(@Valid @RequestBody Film newFilm) {
         log.info("POST /films — попытка создать фильм: {}", newFilm.getName());
-        validateReleaseDateField(newFilm);
         newFilm.setId(generateId());
         filmMap.put(newFilm.getId(), newFilm);
         log.debug("Фильм создан: {}", newFilm);
@@ -35,7 +33,6 @@ public class FilmController {
             log.warn("Попытка обновить несуществующий фильм с ID {}", newFilm.getId());
             throw new ValidateException("Фильм с ID " + newFilm.getId() + "не найден");
         }
-        validateReleaseDateField(newFilm);
         filmMap.put(newFilm.getId(), newFilm);
         log.debug("Фильм обновлён: {}", newFilm);
         return newFilm;
@@ -45,13 +42,6 @@ public class FilmController {
     public Collection<Film> getAll() {
         log.info("GET /films — попытка вернуть список фильмов, всего: {}", filmMap.size());
         return filmMap.values();
-    }
-
-    private void validateReleaseDateField(Film film) {
-        if (film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
-            log.warn("Дата релиза раньше допустимой {}", film.getReleaseDate());
-            throw new ValidateException("дата релиза — не раньше 28 декабря 1895 года");
-        }
     }
 
     private int generateId() {

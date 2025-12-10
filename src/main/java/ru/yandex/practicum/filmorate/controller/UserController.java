@@ -21,7 +21,7 @@ public class UserController {
     public User create(@Valid @RequestBody User newUser) {
         log.info("POST /films — попытка создать юзера: {}", newUser.getName());
         newUser.setId(generateId());
-        validateNameField(newUser);
+        setNameByLoginIfEmpty(newUser);
         usersMap.put(newUser.getId(), newUser);
         log.debug("Юзер создан: {}", newUser);
         return newUser;
@@ -35,7 +35,7 @@ public class UserController {
             log.warn("Попытка обновить несуществующего юзера с ID {}", newUser.getId());
             throw new ValidateException("Пользователь с ID " + newUser.getId() + " не найден");
         }
-        validateNameField(newUser);
+        setNameByLoginIfEmpty(newUser);
         usersMap.put(newUser.getId(), newUser);
         log.debug("Юзер обновлён: {}", newUser);
         return newUser;
@@ -52,7 +52,7 @@ public class UserController {
         return ++counter;
     }
 
-    private void validateNameField(User user) {
+    private void setNameByLoginIfEmpty(User user) {
         if (user.getName() == null || user.getName().isBlank()) {
             user.setName(user.getLogin());
             log.debug("Имя юзера взято из логина");

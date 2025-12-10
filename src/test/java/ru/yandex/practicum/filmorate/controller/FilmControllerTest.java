@@ -97,15 +97,18 @@ public class FilmControllerTest {
     }
 
     @Test
-    void createFilm_ShouldThrowValidateException_WhenReleaseDateTooEarly() {
+    void shouldFailValidation_whenReleaseDateTooEarly() {
         Film film = filmWithTooEarlyReleaseDate();
 
-        ValidateException exception = assertThrows(ValidateException.class,
-                () -> filmController.create(film));
+        Set<ConstraintViolation<Film>> violations = validator.validate(film);
 
-        assertTrue(exception.getMessage().contains("дата релиза — не раньше 28 декабря 1895 года"));
+        assertFalse(violations.isEmpty());
+        assertTrue(
+                violations.stream()
+                        .anyMatch(v -> v.getMessage()
+                                .contains("дата релиза — не раньше 28 декабря 1895 года"))
+        );
     }
-
 
     @Test
     void updateFilm_ShouldUpdateExistingFilm() {
