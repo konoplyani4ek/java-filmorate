@@ -6,6 +6,7 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
 import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
@@ -13,7 +14,6 @@ import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
-import java.util.NoSuchElementException;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -93,10 +93,10 @@ class UserControllerTest {
     }
 
     @Test
-    void updateUser_ShouldThrowNoSuchElementException_WhenUserNotFound() {
+    void updateUser_ShouldThrowEntityNotFoundException_WhenUserNotFound() {
         User user = createValidUser("login", "Name", "test@example.com", LocalDate.of(2000, 1, 1));
         user.setId(999); // несуществующий ID
-        NoSuchElementException exception = assertThrows(NoSuchElementException.class,
+        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class,
                 () -> userController.update(user));
         assertTrue(exception.getMessage().contains("не найден"));
     }
@@ -116,11 +116,11 @@ class UserControllerTest {
         int nonExistentUserId = 999;
         int existingUserId = 1;
 
-        assertThrows(NoSuchElementException.class, () ->
+        assertThrows(EntityNotFoundException.class, () ->
                 userService.addFriend(nonExistentUserId, existingUserId)
         );
 
-        assertThrows(NoSuchElementException.class, () ->
+        assertThrows(EntityNotFoundException.class, () ->
                 userService.addFriend(existingUserId, nonExistentUserId)
         );
     }

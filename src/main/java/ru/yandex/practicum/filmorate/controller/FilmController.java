@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -12,23 +13,20 @@ import java.util.*;
 @RestController
 @RequestMapping("/films")
 @Slf4j
+@RequiredArgsConstructor
 public class FilmController {
 
-    FilmService filmService;
-
-    public FilmController(FilmService filmService) {
-        this.filmService = filmService;
-    }
+    private final FilmService filmService;
 
     @PutMapping("/{id}/like/{userId}")
-    public void addLike(@PathVariable("id")  Integer filmId,
+    public void addLike(@PathVariable("id") Integer filmId,
                         @PathVariable Integer userId) {
         filmService.addLike(filmId, userId);
     }
 
     @DeleteMapping("/{id}/like/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeLike(@PathVariable("id")  Integer filmId,
+    public void removeLike(@PathVariable("id") Integer filmId,
                            @PathVariable Integer userId) {
         filmService.removeLike(filmId, userId);
     }

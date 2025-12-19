@@ -7,6 +7,7 @@ import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
@@ -16,7 +17,6 @@ import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
-import java.util.NoSuchElementException;
 import java.util.Set;
 
 
@@ -138,11 +138,11 @@ public class FilmControllerTest {
     }
 
     @Test
-    void updateFilm_ShouldThrowNoSuchElementException_WhenFilmNotFound() {
+    void updateFilm_ShouldThrowEntityNotFoundException_WhenFilmNotFound() {
         Film film = validFilm();
         film.setId(999); // несуществующий ID
 
-        NoSuchElementException exception = assertThrows(NoSuchElementException.class,
+        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class,
                 () -> filmController.update(film));
 
         assertTrue(exception.getMessage().contains("не найден"));

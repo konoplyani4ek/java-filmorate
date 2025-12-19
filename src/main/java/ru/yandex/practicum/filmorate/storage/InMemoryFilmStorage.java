@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.storage;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.util.*;
@@ -24,25 +25,24 @@ public class InMemoryFilmStorage implements FilmStorage {
     public Film update(Film film) {
         Film existingFilm = filmMap.get(film.getId());
         if (existingFilm == null) {
-            throw new NoSuchElementException("Фильм с ID " + film.getId() + "не найден");
+            throw new EntityNotFoundException("Фильм с ID " + film.getId() + "не найден");
         }
         filmMap.put(film.getId(), film);
         log.debug("Фильм обновлён: {}", film);
         return film;
     }
 
-    @Override // дописать логи?
+    @Override
     public void deleteById(Integer id) {
         Film removed = filmMap.remove(id);
         if (removed == null) {
-            throw new NoSuchElementException("Фильм с id=" + id + " не найден");
+            throw new EntityNotFoundException("Фильм с id=" + id + " не найден");
         }
     }
 
     @Override
     public Optional<Film> getById(Integer id) {
-        Film film = filmMap.get(id);
-        return Optional.ofNullable(film);
+        return Optional.ofNullable(filmMap.get(id));
     }
 
     @Override

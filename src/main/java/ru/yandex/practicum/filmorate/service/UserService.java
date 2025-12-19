@@ -1,7 +1,9 @@
 package ru.yandex.practicum.filmorate.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
@@ -10,28 +12,20 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class UserService {
+
     private final UserStorage userStorage;
 
-    public UserService(UserStorage userStorage) {
-        this.userStorage = userStorage;
-    }
-
     public void addFriend(Integer userId, Integer friendId) {
-        User user = userStorage.getById(userId)
-                .orElseThrow(() ->
-                        new NoSuchElementException("Пользователь с ID " + userId + " не найден")
-                );
+        User user = getByIdOrThrowNotFound(userId);
         if (user.isFriend(friendId)) {
             log.warn(
                     "Попытка повторно добавить в друзья: userId={}, friendId={}",
                     userId, friendId);
             throw new IllegalArgumentException("Пользователи уже друзья");
         }
-        User friendUser = userStorage.getById(friendId)
-                .orElseThrow(() ->
-                        new NoSuchElementException("Пользователь с ID " + friendId + " не найден")
-                );
+        User friendUser = getByIdOrThrowNotFound(friendId);
         user.addFriend(friendId);
         friendUser.addFriend(userId);
         log.info("Пользователи с ID {} и {} теперь друзья", userId, friendId);
@@ -39,15 +33,9 @@ public class UserService {
 
     public void removeFriend(Integer userId, Integer friendId) {
 
-        User user = userStorage.getById(userId)
-                .orElseThrow(() ->
-                        new NoSuchElementException("Пользователь с ID " + userId + " не найден")
-                );
+        User user = getByIdOrThrowNotFound(userId);
 
-        User friendUser = userStorage.getById(friendId)
-                .orElseThrow(() ->
-                        new NoSuchElementException("Пользователь с ID " + friendId + " не найден")
-                );
+        User friendUser = getByIdOrThrowNotFound(friendId);
 
         user.removeFriend(friendId);
         friendUser.removeFriend(userId);
@@ -56,27 +44,18 @@ public class UserService {
     }
 
     public User getUserById(Integer id) {
-        return userStorage.getById(id)
-                .orElseThrow(() ->
-                        new NoSuchElementException("Пользователь с ID " + id + " не найден")
-                );
+        return getByIdOrThrowNotFound(id);
     }
 
     public User update(User user) {
         log.info("Обновляю юзера с id={}", user.getId());
-        User existing = userStorage.getById(user.getId())
-                .orElseThrow(() -> {
-                    log.warn("User not found: id={}", user.getId());
-                    return new NoSuchElementException("Пользователь с ID " + user.getId() + " не найден");
-                });
+        getUserById(user.getId());
         log.debug("User updated: id={}", user.getId());
         return userStorage.update(user);
     }
 
     public Collection<User> getFriendsById(Integer id) {
-        log.info("Получаю список друзей по id {}", id);
-        User user = userStorage.getById(id)
-                .orElseThrow(() -> new NoSuchElementException("Пользователь с id " + id + " не найден"));
+        getByIdOrThrowNotFound(id);
         log.info("Друзья пользователя {}: {}", id, userStorage.getFriendsById(id));
         return userStorage.getFriendsById(id); //может быть пустой
     }
@@ -95,6 +74,7 @@ public class UserService {
     public User create(User newUser) {
         log.info("попытка создать юзера: {}", newUser.getName());
         userStorage.create(newUser);
+        setNameByLoginIfEmpty(newUser);
         log.debug("Юзер создан: {}", newUser);
         return newUser;
     }
@@ -104,4 +84,15 @@ public class UserService {
         return userStorage.getAll();
     }
 
+    private User getByIdOrThrowNotFound(Integer id) {
+        return userStorage.getById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Пользователь с id " + id + " не найден"));
+    }
+
+    private void setNameByLoginIfEmpty(User user) {
+        if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(user.getLogin());
+            log.debug("Имя юзера взято из логина");
+        }
+    }
 }

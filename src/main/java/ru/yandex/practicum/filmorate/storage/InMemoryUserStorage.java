@@ -17,7 +17,6 @@ public class InMemoryUserStorage implements UserStorage {
     @Override
     public User create(User user) {
         user.setId(generateId());
-        setNameByLoginIfEmpty(user);
         usersMap.put(user.getId(), user);
         return user;
     }
@@ -29,7 +28,7 @@ public class InMemoryUserStorage implements UserStorage {
     }
 
 
-    @Override // дописать логи?
+    @Override
     public void deleteById(Integer id) {
         User removed = usersMap.remove(id);
         if (removed == null) {
@@ -41,16 +40,9 @@ public class InMemoryUserStorage implements UserStorage {
         return ++counter;
     }
 
-    private void setNameByLoginIfEmpty(User user) {
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(user.getLogin());
-            log.debug("Имя юзера взято из логина");
-        }
-    }
 
     public Optional<User> getById(Integer id) {
-        User user = usersMap.get(id);
-        return Optional.ofNullable(user);
+        return Optional.ofNullable(usersMap.get(id));
     }
 
     public Collection<User> getFriendsById(Integer id) {
