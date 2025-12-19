@@ -6,11 +6,14 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import ru.yandex.practicum.filmorate.exception.ValidateException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,12 +22,16 @@ import static org.junit.jupiter.api.Assertions.*;
 class UserControllerTest {
 
     private UserController userController;
+    private UserStorage userStorage;
+    private UserService userService;
     private static final ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
     private static final Validator validator = factory.getValidator();
 
     @BeforeEach
     void setUp() {
-        userController = new UserController();
+        userStorage = new InMemoryUserStorage();
+        userService = new UserService(new InMemoryUserStorage());
+        userController = new UserController(userService);
     }
 
     private User createValidUser(String login, String name, String email, LocalDate birthday) {
@@ -86,10 +93,10 @@ class UserControllerTest {
     }
 
     @Test
-    void updateUser_ShouldThrowValidateException_WhenUserNotFound() {
+    void updateUser_ShouldThrowNoSuchElementException_WhenUserNotFound() {
         User user = createValidUser("login", "Name", "test@example.com", LocalDate.of(2000, 1, 1));
         user.setId(999); // несуществующий ID
-        ValidateException exception = assertThrows(ValidateException.class,
+        NoSuchElementException exception = assertThrows(NoSuchElementException.class,
                 () -> userController.update(user));
         assertTrue(exception.getMessage().contains("не найден"));
     }
@@ -103,6 +110,21 @@ class UserControllerTest {
         assertTrue(allUsers.contains(user1));
         assertTrue(allUsers.contains(user2));
     }
+
+    @Test
+    void addFriend_ShouldThrow_WhenUserNotFound() {
+        int nonExistentUserId = 999;
+        int existingUserId = 1;
+
+        assertThrows(NoSuchElementException.class, () ->
+                userService.addFriend(nonExistentUserId, existingUserId)
+        );
+
+        assertThrows(NoSuchElementException.class, () ->
+                userService.addFriend(existingUserId, nonExistentUserId)
+        );
+    }
+
 }
 
 

@@ -7,12 +7,18 @@ import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import ru.yandex.practicum.filmorate.exception.ValidateException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
+import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.NoSuchElementException;
 import java.util.Set;
+
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,13 +26,19 @@ import static org.junit.jupiter.api.Assertions.*;
 public class FilmControllerTest {
 
     private FilmController filmController;
+    private FilmService filmService;
+    private FilmStorage filmStorage;
+    private UserService userService;
     private static final ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
     private static final Validator validator = factory.getValidator();
 
 
     @BeforeEach
     void setUp() {
-        filmController = new FilmController();
+        filmStorage = new InMemoryFilmStorage();
+        userService = new UserService(new InMemoryUserStorage());
+        filmService = new FilmService(filmStorage, userService);
+        filmController = new FilmController(filmService);
     }
 
 
@@ -65,7 +77,7 @@ public class FilmControllerTest {
         assertNotNull(created.getId());
         assertEquals("Test Film", created.getName());
 
-        Collection<Film> allFilms = filmController.getAll();
+        Collection<Film> allFilms = filmController.getAllFilms();
         assertTrue(allFilms.contains(created));
     }
 
@@ -126,11 +138,11 @@ public class FilmControllerTest {
     }
 
     @Test
-    void updateFilm_ShouldThrowValidateException_WhenFilmNotFound() {
+    void updateFilm_ShouldThrowNoSuchElementException_WhenFilmNotFound() {
         Film film = validFilm();
         film.setId(999); // несуществующий ID
 
-        ValidateException exception = assertThrows(ValidateException.class,
+        NoSuchElementException exception = assertThrows(NoSuchElementException.class,
                 () -> filmController.update(film));
 
         assertTrue(exception.getMessage().contains("не найден"));
@@ -141,7 +153,7 @@ public class FilmControllerTest {
         Film film1 = filmController.create(validFilm());
         Film film2 = filmController.create(validFilm());
 
-        Collection<Film> allFilms = filmController.getAll();
+        Collection<Film> allFilms = filmController.getAllFilms();
 
         assertEquals(2, allFilms.size());
         assertTrue(allFilms.contains(film1));
