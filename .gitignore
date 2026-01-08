@@ -44,3 +44,12 @@ build/
 
 *.db
 db/*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Thumbnails
+Thumbs.db

@@ -7,12 +7,21 @@ import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import ru.yandex.practicum.filmorate.exception.ValidateException;
-import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
+import ru.yandex.practicum.filmorate.model.Film.Film;
+import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.storage.FilmStorage.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.FilmStorage.InMemoryFilmStorage;
+
+import ru.yandex.practicum.filmorate.storage.LikeStorage.InMemoryLikeStorage;
+import ru.yandex.practicum.filmorate.storage.LikeStorage.LikeStorage;
+import ru.yandex.practicum.filmorate.storage.UserStorage.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.UserStorage.UserStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Set;
+
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,13 +29,21 @@ import static org.junit.jupiter.api.Assertions.*;
 public class FilmControllerTest {
 
     private FilmController filmController;
+    private FilmStorage filmStorage;
+    private UserStorage userStorage;
+    private LikeStorage likeStorage;
+    private FilmService filmService;
     private static final ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
     private static final Validator validator = factory.getValidator();
 
 
     @BeforeEach
     void setUp() {
-        filmController = new FilmController();
+        filmStorage = new InMemoryFilmStorage();
+        userStorage = new InMemoryUserStorage();
+        likeStorage = new InMemoryLikeStorage();
+        filmService = new FilmService(filmStorage, likeStorage, userStorage);
+        filmController = new FilmController(filmService);
     }
 
 
@@ -65,7 +82,7 @@ public class FilmControllerTest {
         assertNotNull(created.getId());
         assertEquals("Test Film", created.getName());
 
-        Collection<Film> allFilms = filmController.getAll();
+        Collection<Film> allFilms = filmController.getAllFilms();
         assertTrue(allFilms.contains(created));
     }
 
@@ -126,11 +143,11 @@ public class FilmControllerTest {
     }
 
     @Test
-    void updateFilm_ShouldThrowValidateException_WhenFilmNotFound() {
+    void updateFilm_ShouldThrowEntityNotFoundException_WhenFilmNotFound() {
         Film film = validFilm();
         film.setId(999); // несуществующий ID
 
-        ValidateException exception = assertThrows(ValidateException.class,
+        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class,
                 () -> filmController.update(film));
 
         assertTrue(exception.getMessage().contains("не найден"));
@@ -141,7 +158,7 @@ public class FilmControllerTest {
         Film film1 = filmController.create(validFilm());
         Film film2 = filmController.create(validFilm());
 
-        Collection<Film> allFilms = filmController.getAll();
+        Collection<Film> allFilms = filmController.getAllFilms();
 
         assertEquals(2, allFilms.size());
         assertTrue(allFilms.contains(film1));

@@ -1,61 +1,73 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.filmorate.exception.ValidateException;
-import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.User.User;
+import ru.yandex.practicum.filmorate.service.UserService;
 
 import java.util.*;
 
 @RestController
 @RequestMapping("/users")
 @Slf4j
+@RequiredArgsConstructor
 public class UserController {
 
-    private final Map<Integer, User> usersMap = new HashMap<>();
-    private static int counter = 0;
+    private final UserService userService;
 
+    @GetMapping("/{id}")
+    public User get(@PathVariable Integer id) {
+        return userService.getUserById(id);
+    }
+
+    @PutMapping("/{id}/friends/{friendId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void addFriend(@PathVariable Integer id,
+                          @PathVariable Integer friendId) {
+        userService.addFriend(id, friendId);
+    }
+
+    @DeleteMapping("/{id}/friends/{friendId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteFriend(@PathVariable Integer id,
+                             @PathVariable Integer friendId) {
+        userService.removeFriend(id, friendId);
+    }
+
+    @GetMapping("{id}/friends")
+
+    public Collection<User> getFriendsById(@PathVariable Integer id) {
+        return userService.getFriendsById(id);
+    }
+
+    @GetMapping("{id}/friends/common/{otherId}")
+    public Collection<User> getCommonFriends(@PathVariable Integer id, @PathVariable Integer otherId) {
+        return userService.getCommonFriends(id, otherId);
+    }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public User create(@Valid @RequestBody User newUser) {
-        log.info("POST /films — попытка создать юзера: {}", newUser.getName());
-        newUser.setId(generateId());
-        setNameByLoginIfEmpty(newUser);
-        usersMap.put(newUser.getId(), newUser);
-        log.debug("Юзер создан: {}", newUser);
-        return newUser;
+        return userService.create(newUser);
     }
 
     @PutMapping
     public User update(@Valid @RequestBody User newUser) {
-        log.info("PUT /users — попытка обновить фильм с ID {}", newUser.getId());
-        User existingUser = usersMap.get(newUser.getId());
-        if (existingUser == null) {
-            log.warn("Попытка обновить несуществующего юзера с ID {}", newUser.getId());
-            throw new ValidateException("Пользователь с ID " + newUser.getId() + " не найден");
-        }
-        setNameByLoginIfEmpty(newUser);
-        usersMap.put(newUser.getId(), newUser);
-        log.debug("Юзер обновлён: {}", newUser);
-        return newUser;
+        return userService.update(newUser);
     }
-
 
     @GetMapping
     public Collection<User> getAll() {
-        log.info("GET /users — попытка вернуть список юзеров, всего: {}", usersMap.size());
-        return usersMap.values();
+        return userService.getAll();
     }
 
-    private int generateId() {
-        return ++counter;
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteUser(@PathVariable Integer id) {
+        userService.deleteUser(id);
     }
 
-    private void setNameByLoginIfEmpty(User user) {
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(user.getLogin());
-            log.debug("Имя юзера взято из логина");
-        }
-    }
 }
