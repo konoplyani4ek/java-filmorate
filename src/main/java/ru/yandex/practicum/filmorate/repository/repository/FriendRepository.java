@@ -34,9 +34,10 @@ public class FriendRepository {
 
     /**
      * Добавить друга.
-     * @param userId ID пользователя, который добавляет в друзья
+     *
+     * @param userId   ID пользователя, который добавляет в друзья
      * @param friendId ID пользователя, которого добавляют в друзья
-     * @param status Статус дружбы (PENDING или CONFIRMED)
+     * @param status   Статус дружбы (PENDING или CONFIRMED)
      */
     public void add(int userId, int friendId, FriendshipStatus status) {
         String sql = "INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, ?)";
@@ -101,6 +102,7 @@ public class FriendRepository {
 
     /**
      * Получить статус дружбы между двумя пользователями.
+     *
      * @return FriendshipStatus или null если связи нет
      */
     public FriendshipStatus getStatus(int userId, int friendId) {
@@ -117,9 +119,6 @@ public class FriendRepository {
         }
     }
 
-    /**
-     * Обновить статус дружбы.
-     */
     public void updateStatus(int userId, int friendId, FriendshipStatus status) {
         String sql = "UPDATE friends SET status = ? WHERE user_id = ? AND friend_id = ?";
         String statusString = status.name();

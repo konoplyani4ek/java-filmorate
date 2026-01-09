@@ -14,7 +14,6 @@ import ru.yandex.practicum.filmorate.repository.repository.UserRepository;
 
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -170,6 +169,7 @@ public class FilmService {
 
     /**
      * Получить топ самых популярных фильмов.
+     *
      * @param limit Количество фильмов
      * @return Список фильмов, отсортированных по количеству лайков
      */

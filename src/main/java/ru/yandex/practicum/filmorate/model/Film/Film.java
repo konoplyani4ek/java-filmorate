@@ -35,20 +35,13 @@ public class Film {
     @Positive(message = "Продолжительность фильма должна быть положительным числом")
     private int duration;
 
-    /**
-     * Жанры фильма.
-     * Теперь это полноценные сущности из БД, а не enum.
-     */
+
     private Set<Genre> genres = new LinkedHashSet<>();
 
-    /**
-     * Рейтинг MPA (внутреннее поле).
-     */
+
     private MpaRating rating;
 
-    /**
-     * Getter для JSON сериализации MPA рейтинга.
-     */
+
     @JsonGetter("mpa")
     public MpaRating getMpa() {
         return rating;
