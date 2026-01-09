@@ -1,45 +1,50 @@
 package ru.yandex.practicum.filmorate.model.Film;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import lombok.Getter;
-import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
 
-import java.util.Map;
+@Data
+public class Genre {
 
-@Getter
-public enum Genre {
+    @JsonProperty("id")
+    private Integer id;
 
-    COMEDY("Комедия"),
-    DRAMA("Драма"),
-    CARTOON("Мультфильм"),
-    THRILLER("Триллер"),
-    DOCUMENTARY("Документальный"),
-    ACTION("Боевик");
+    @JsonProperty("name")
+    private String name;
 
-    private final String russianName;
-
-    Genre(String russianName) {
-        this.russianName = russianName;
+    public Genre() {
     }
 
+    public Genre(Integer id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    /**
+     * Конструктор для создания жанра только с id (для десериализации из JSON).
+     * Используется когда клиент отправляет только {"id": 1}
+     */
     @JsonCreator
-    public static Genre fromJson(Map<String, Integer> json) {
-        if (json == null || !json.containsKey("id")) {
-            return null;
-        }
-        int id = json.get("id");
-        if (id < 1 || id > Genre.values().length) {
-            throw new EntityNotFoundException("Жанр с id " + id + " не найден");
-        }
-        return Genre.values()[id - 1];
+    public Genre(@JsonProperty("id") Integer id) {
+        this.id = id;
     }
 
-    @JsonValue
-    public Map<String, Object> toJson() {
-        return Map.of(
-                "id", this.ordinal() + 1,
-                "name", this.russianName
-        );
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Genre genre = (Genre) o;
+        return id != null && id.equals(genre.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "Genre{id=" + id + ", name='" + name + "'}";
     }
 }

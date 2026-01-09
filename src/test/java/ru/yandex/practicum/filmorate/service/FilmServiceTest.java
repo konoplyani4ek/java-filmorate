@@ -2,119 +2,274 @@ package ru.yandex.practicum.filmorate.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.model.Film.Film;
+import ru.yandex.practicum.filmorate.model.Film.Genre;
 import ru.yandex.practicum.filmorate.model.User.User;
-import ru.yandex.practicum.filmorate.storage.FilmStorage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.FilmStorage.InMemoryFilmStorage;
-import ru.yandex.practicum.filmorate.storage.LikeStorage.InMemoryLikeStorage;
-import ru.yandex.practicum.filmorate.storage.LikeStorage.LikeStorage;
-import ru.yandex.practicum.filmorate.storage.UserStorage.InMemoryUserStorage;
-import ru.yandex.practicum.filmorate.storage.UserStorage.UserStorage;
-
+import ru.yandex.practicum.filmorate.repository.repository.*;
 
 import java.time.LocalDate;
-import java.util.Collection;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
+/**
+ * Простые тесты для FilmService/FilmController.
+ */
 class FilmServiceTest {
 
     private FilmService filmService;
-    private UserService userService;
-    private LikeStorage likeStorage;
+    private FilmController filmController;
+
+    // Репозитории (моки)
+    private FilmRepository filmRepository;
+    private GenreRepository genreRepository;
+    private LikeRepository likeRepository;
+    private UserRepository userRepository;
+    private GenreService genreService;
 
     @BeforeEach
     void setUp() {
-        UserStorage userStorage = new InMemoryUserStorage();
-        FilmStorage filmStorage = new InMemoryFilmStorage();
-        likeStorage = new InMemoryLikeStorage();
-        userService = new UserService(userStorage);
-        filmService = new FilmService(filmStorage, likeStorage, userStorage);
-    }
+        // Создаем моки
+        filmRepository = mock(FilmRepository.class);
+        genreRepository = mock(GenreRepository.class);
+        likeRepository = mock(LikeRepository.class);
+        userRepository = mock(UserRepository.class);
+        genreService = mock(GenreService.class);
 
-    @Test
-    void addLike_shouldAddLikeToFilm() {
-        User user = createUser("user@mail.ru");
-        Film film = createFilm("Film 1");
+        // Создаем сервис с новой сигнатурой (5 параметров)
+        filmService = new FilmService(
+                filmRepository,
+                genreRepository,
+                likeRepository,
+                userRepository,
+                genreService
+        );
 
-        filmService.addLike(film.getId(), user.getId());
-
-        assertTrue(likeStorage.hasLike(film.getId(), user.getId()));
-        assertEquals(1, likeStorage.countLikes(film.getId()));
-    }
-
-    @Test
-    void removeLike_shouldRemoveLikeFromFilm() {
-        User user = createUser("user@mail.ru");
-        Film film = createFilm("Film 1");
-
-        filmService.addLike(film.getId(), user.getId());
-        filmService.removeLike(film.getId(), user.getId());
-
-        assertFalse(likeStorage.hasLike(film.getId(), user.getId()));
-        assertEquals(0, likeStorage.countLikes(film.getId()));
-    }
-
-    @Test
-    void getTopMostLikedFilms_shouldReturnFilmsSortedByLikes() {
-        User user1 = createUser("user1@mail.ru");
-        User user2 = createUser("user2@mail.ru");
-
-        Film film1 = createFilm("Film 1");
-        Film film2 = createFilm("Film 2");
-
-        filmService.addLike(film1.getId(), user1.getId());
-        filmService.addLike(film1.getId(), user2.getId());
-        filmService.addLike(film2.getId(), user1.getId());
-
-        Collection<Film> topFilms = filmService.getTopMostLikedFilms(1);
-
-        assertEquals(1, topFilms.size());
-        assertEquals(film1.getId(), topFilms.iterator().next().getId());
+        // Создаем контроллер
+        filmController = new FilmController(filmService);
     }
 
     @Test
     void create_shouldCreateFilm() {
-        Film film = createFilm("New Film");
+        // Arrange
+        Film film = new Film();
+        film.setName("Test Film");
+        film.setDescription("Description");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
 
-        assertNotNull(film.getId());
-        assertEquals(1, filmService.getAllFilms().size());
+        Film createdFilm = new Film();
+        createdFilm.setId(1);
+        createdFilm.setName("Test Film");
+        createdFilm.setDescription("Description");
+        createdFilm.setReleaseDate(LocalDate.of(2020, 1, 1));
+        createdFilm.setDuration(120);
+
+        when(filmRepository.create(any(Film.class))).thenReturn(createdFilm);
+
+        // Act
+        Film result = filmService.create(film);
+
+        // Assert
+        assertNotNull(result.getId());
+        assertEquals(1, result.getId());
+        verify(filmRepository, times(1)).create(any(Film.class));
     }
 
     @Test
-    void update_shouldUpdateFilm() {
-        Film film = createFilm("Old Name");
-        film.setName("Updated Name");
+    void getFilmById_shouldReturnFilm() {
+        // Arrange
+        Film film = new Film();
+        film.setId(1);
+        film.setName("Test Film");
 
-        Film updated = filmService.update(film);
+        when(filmRepository.findById(1)).thenReturn(Optional.of(film));
 
-        assertEquals("Updated Name", updated.getName());
+        // Act
+        Film result = filmService.getFilmById(1);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.getId());
+        assertEquals("Test Film", result.getName());
+        verify(filmRepository, times(1)).findById(1);
     }
 
     @Test
     void getAllFilms_shouldReturnAllFilms() {
-        createFilm("Film 1");
-        createFilm("Film 2");
+        // Arrange
+        Film film1 = new Film();
+        film1.setId(1);
+        film1.setName("Film 1");
 
+        Film film2 = new Film();
+        film2.setId(2);
+        film2.setName("Film 2");
+
+        when(filmRepository.findAll()).thenReturn(Arrays.asList(film1, film2));
+
+        // Act
         Collection<Film> films = filmService.getAllFilms();
 
+        // Assert
         assertEquals(2, films.size());
+        verify(filmRepository, times(1)).findAll();
     }
 
-    private User createUser(String email) {
-        User user = new User();
-        user.setEmail(email);
-        user.setLogin(email.split("@")[0]);
-        user.setBirthday(LocalDate.of(1990, 1, 1));
-        return userService.create(user);
-    }
-
-    private Film createFilm(String name) {
+    @Test
+    void addLike_shouldAddLike() {
+        // Arrange
         Film film = new Film();
-        film.setName(name);
+        film.setId(1);
+
+        User user = new User();
+        user.setId(2);
+
+        when(filmRepository.findById(1)).thenReturn(Optional.of(film));
+        when(userRepository.findById(2)).thenReturn(Optional.of(user));
+        when(likeRepository.hasLike(1, 2)).thenReturn(false);
+
+        // Act
+        filmService.addLike(1, 2);
+
+        // Assert
+        verify(likeRepository, times(1)).addLike(1, 2);
+    }
+
+    @Test
+    void addLike_shouldThrowWhenAlreadyLiked() {
+        // Arrange
+        Film film = new Film();
+        film.setId(1);
+
+        User user = new User();
+        user.setId(2);
+
+        when(filmRepository.findById(1)).thenReturn(Optional.of(film));
+        when(userRepository.findById(2)).thenReturn(Optional.of(user));
+        when(likeRepository.hasLike(1, 2)).thenReturn(true); // Уже есть лайк
+
+        // Act & Assert
+        assertThrows(IllegalStateException.class, () -> {
+            filmService.addLike(1, 2);
+        });
+        verify(likeRepository, never()).addLike(anyInt(), anyInt());
+    }
+
+    @Test
+    void removeLike_shouldRemoveLike() {
+        // Arrange
+        Film film = new Film();
+        film.setId(1);
+
+        User user = new User();
+        user.setId(2);
+
+        when(filmRepository.findById(1)).thenReturn(Optional.of(film));
+        when(userRepository.findById(2)).thenReturn(Optional.of(user));
+
+        // Act
+        filmService.removeLike(1, 2);
+
+        // Assert
+        verify(likeRepository, times(1)).removeLike(1, 2);
+    }
+
+    @Test
+    void getTopMostLikedFilms_shouldReturnTopFilms() {
+        // Arrange
+        Film film1 = new Film();
+        film1.setId(1);
+        film1.setName("Popular Film");
+
+        Film film2 = new Film();
+        film2.setId(2);
+        film2.setName("Less Popular Film");
+
+        when(filmRepository.findAll()).thenReturn(Arrays.asList(film1, film2));
+        when(likeRepository.countLikes(1)).thenReturn(10);
+        when(likeRepository.countLikes(2)).thenReturn(5);
+
+        // Act
+        Collection<Film> topFilms = filmService.getTopMostLikedFilms(1);
+
+        // Assert
+        assertEquals(1, topFilms.size());
+        assertEquals("Popular Film", topFilms.iterator().next().getName());
+    }
+
+    @Test
+    void update_shouldUpdateFilm() {
+        // Arrange
+        Film existingFilm = new Film();
+        existingFilm.setId(1);
+        existingFilm.setName("Old Name");
+
+        Film updatedFilm = new Film();
+        updatedFilm.setId(1);
+        updatedFilm.setName("New Name");
+        updatedFilm.setDescription("New Description");
+        updatedFilm.setReleaseDate(LocalDate.of(2021, 1, 1));
+        updatedFilm.setDuration(150);
+
+        when(filmRepository.findById(1)).thenReturn(Optional.of(existingFilm));
+        when(filmRepository.update(any(Film.class))).thenReturn(updatedFilm);
+
+        // Act
+        Film result = filmService.update(updatedFilm);
+
+        // Assert
+        assertEquals("New Name", result.getName());
+        verify(filmRepository, times(1)).update(any(Film.class));
+    }
+
+    @Test
+    void deleteFilm_shouldDeleteFilm() {
+        // Arrange
+        Film film = new Film();
+        film.setId(1);
+
+        when(filmRepository.findById(1)).thenReturn(Optional.of(film));
+        when(filmRepository.deleteById(1)).thenReturn(true);
+
+        // Act
+        filmService.deleteFilm(1);
+
+        // Assert
+        verify(filmRepository, times(1)).deleteById(1);
+    }
+
+    @Test
+    void create_withGenres_shouldValidateGenres() {
+        // Arrange
+        Genre genre = new Genre();
+        genre.setId(1);
+        genre.setName("Комедия");
+
+        Film film = new Film();
+        film.setName("Test Film");
         film.setDescription("Description");
-        film.setReleaseDate(LocalDate.of(2000, 1, 1));
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
         film.setDuration(120);
-        return filmService.create(film);
+        film.setGenres(new LinkedHashSet<>(Arrays.asList(genre)));
+
+        Film createdFilm = new Film();
+        createdFilm.setId(1);
+        createdFilm.setName("Test Film");
+        createdFilm.setGenres(new LinkedHashSet<>(Arrays.asList(genre)));
+
+        when(filmRepository.create(any(Film.class))).thenReturn(createdFilm);
+        when(genreRepository.getGenresByFilmId(1)).thenReturn(new LinkedHashSet<>(Arrays.asList(genre)));
+        doNothing().when(genreService).validateGenres(any());
+
+        // Act
+        Film result = filmService.create(film);
+
+        // Assert
+        assertNotNull(result.getId());
+        verify(genreService, times(1)).validateGenres(any());
     }
 }

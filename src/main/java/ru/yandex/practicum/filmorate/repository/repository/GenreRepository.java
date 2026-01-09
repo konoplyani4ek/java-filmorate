@@ -1,139 +1,145 @@
 package ru.yandex.practicum.filmorate.repository.repository;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.exception.InternalServerException;
 import ru.yandex.practicum.filmorate.model.Film.Genre;
 
-import java.sql.PreparedStatement;
-import java.sql.Statement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 
 @Repository
+@RequiredArgsConstructor
+@Slf4j
 public class GenreRepository {
+
     private final JdbcTemplate jdbc;
 
-    public GenreRepository(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    private static final RowMapper<Genre> GENRE_ROW_MAPPER = new RowMapper<>() {
+        @Override
+        public Genre mapRow(ResultSet rs, int rowNum) throws SQLException {
+            return new Genre(
+                    rs.getInt("genre_id"),
+                    rs.getString("name")
+            );
+        }
+    };
+
+    /**
+     * Получить все жанры из БД.
+     */
+    public List<Genre> findAll() {
+        String sql = "SELECT genre_id, name FROM genres ORDER BY genre_id";
+        log.debug("Executing query: {}", sql);
+        return jdbc.query(sql, GENRE_ROW_MAPPER);
     }
 
     /**
-     * Возвращает id жанра; если записи в справочнике нет — создаёт её.
+     * Получить жанр по ID.
      */
-    public int getOrCreateId(Genre genre) {
-        if (genre == null) {
-            throw new IllegalArgumentException("genre не должен быть null");
-        }
-
-        Optional<Integer> existing = findIdByName(genre.name());
-        if (existing.isPresent()) {
-            return existing.get();
-        }
-
-        GeneratedKeyHolder kh = new GeneratedKeyHolder();
-        jdbc.update(con -> {
-            PreparedStatement ps = con.prepareStatement(
-                    "insert into genres(name) values (?)",
-                    Statement.RETURN_GENERATED_KEYS
-            );
-            ps.setString(1, genre.name());
-            return ps;
-        }, kh);
-
-        Integer id = kh.getKeyAs(Integer.class);
-        if (id == null) {
-            throw new InternalServerException("Не удалось сохранить genre");
-        }
-        return id;
-    }
-
-    public Optional<Integer> findIdByName(String name) {
+    public Optional<Genre> findById(Integer id) {
+        String sql = "SELECT genre_id, name FROM genres WHERE genre_id = ?";
+        log.debug("Executing query: {} with id={}", sql, id);
         try {
-            Integer id = jdbc.queryForObject(
-                    "select genre_id from genres where name = ?",
-                    Integer.class,
-                    name
-            );
-            return Optional.ofNullable(id);
-        } catch (org.springframework.dao.EmptyResultDataAccessException ignored) {
+            Genre genre = jdbc.queryForObject(sql, GENRE_ROW_MAPPER, id);
+            return Optional.ofNullable(genre);
+        } catch (EmptyResultDataAccessException e) {
+            log.debug("Genre with id={} not found", id);
             return Optional.empty();
         }
     }
 
-    public Set<Genre> getGenresByFilmId(int filmId) {
-        List<String> names = jdbc.queryForList(
-                "select g.name " +
-                        "from film_genres fg " +
-                        "join genres g on g.genre_id = fg.genre_id " +
-                        "where fg.film_id = ?",
-                String.class,
-                filmId
-        );
-        Set<Genre> genres = new LinkedHashSet<>();
-        for (String n : names) {
-            if (n != null) {
-                try {
-                    genres.add(Genre.valueOf(n.trim()));
-                } catch (IllegalArgumentException e) {
-                    // If genre not found, skip it (for compatibility with old data)
-                    continue;
-                }
-            }
-        }
-        return genres;
+    /**
+     * Получить жанры для конкретного фильма.
+     */
+    public Set<Genre> getGenresByFilmId(Integer filmId) {
+        String sql = "SELECT g.genre_id, g.name " +
+                "FROM genres g " +
+                "JOIN film_genres fg ON g.genre_id = fg.genre_id " +
+                "WHERE fg.film_id = ? " +
+                "ORDER BY g.genre_id";
+
+        log.debug("Getting genres for film_id={}", filmId);
+        List<Genre> genres = jdbc.query(sql, GENRE_ROW_MAPPER, filmId);
+        return new LinkedHashSet<>(genres);
     }
 
     /**
-     * Возвращает жанры для набора filmId одним запросом.
+     * Получить жанры для набора фильмов одним запросом.
      */
     public Map<Integer, Set<Genre>> getGenresByFilmIds(Set<Integer> filmIds) {
         if (filmIds == null || filmIds.isEmpty()) {
-            return Map.of();
+            return new HashMap<>();
         }
 
         String placeholders = String.join(",", Collections.nCopies(filmIds.size(), "?"));
-        String sql = "select fg.film_id, g.name " +
-                "from film_genres fg " +
-                "join genres g on g.genre_id = fg.genre_id " +
-                "where fg.film_id in (" + placeholders + ")";
+        String sql = "SELECT fg.film_id, g.genre_id, g.name " +
+                "FROM film_genres fg " +
+                "JOIN genres g ON g.genre_id = fg.genre_id " +
+                "WHERE fg.film_id IN (" + placeholders + ") " +
+                "ORDER BY fg.film_id, g.genre_id";
 
         Object[] args = filmIds.toArray();
+        log.debug("Getting genres for {} films", filmIds.size());
 
         Map<Integer, Set<Genre>> result = new HashMap<>();
         jdbc.query(sql, rs -> {
             int filmId = rs.getInt("film_id");
-            String name = rs.getString("name");
-            if (name == null) return;
-
-            try {
-                Genre genre = Genre.valueOf(name.trim());
-                result.computeIfAbsent(filmId, k -> new LinkedHashSet<>()).add(genre);
-            } catch (IllegalArgumentException e) {
-                // If genre not found, skip it (for compatibility with old data)
-            }
+            Genre genre = new Genre(
+                    rs.getInt("genre_id"),
+                    rs.getString("name")
+            );
+            result.computeIfAbsent(filmId, k -> new LinkedHashSet<>()).add(genre);
         }, args);
 
         return result;
     }
 
     /**
-     * Перезаписывает жанры фильма: сначала чистим, потом вставляем текущие.
+     * Установить жанры для фильма.
+     * Удаляет старые связи и создает новые.
      */
-    public void setGenresForFilm(int filmId, Set<Genre> genres) {
-        jdbc.update("delete from film_genres where film_id = ?", filmId);
+    public void setGenresForFilm(Integer filmId, Set<Genre> genres) {
+        log.debug("Setting genres for film_id={}", filmId);
+
+        // Удаляем старые связи
+        String deleteSql = "DELETE FROM film_genres WHERE film_id = ?";
+        jdbc.update(deleteSql, filmId);
 
         if (genres == null || genres.isEmpty()) {
+            log.debug("No genres to add for film_id={}", filmId);
             return;
         }
 
-        for (Genre g : genres) {
-            int genreId = getOrCreateId(g);
-            jdbc.update(
-                    "insert into film_genres(film_id, genre_id) values (?, ?)",
-                    filmId,
-                    genreId
-            );
+        // Добавляем новые связи
+        String insertSql = "INSERT INTO film_genres (film_id, genre_id) VALUES (?, ?)";
+        for (Genre genre : genres) {
+            if (genre.getId() != null) {
+                jdbc.update(insertSql, filmId, genre.getId());
+                log.debug("Added genre_id={} to film_id={}", genre.getId(), filmId);
+            }
         }
+    }
+
+    /**
+     * Удалить все жанры фильма.
+     */
+    public void deleteGenresForFilm(Integer filmId) {
+        String sql = "DELETE FROM film_genres WHERE film_id = ?";
+        jdbc.update(sql, filmId);
+        log.debug("Deleted all genres for film_id={}", filmId);
+    }
+
+    /**
+     * Проверить существование жанра.
+     */
+    public boolean existsById(Integer id) {
+        String sql = "SELECT COUNT(*) FROM genres WHERE genre_id = ?";
+        Integer count = jdbc.queryForObject(sql, Integer.class, id);
+        return count != null && count > 0;
     }
 }

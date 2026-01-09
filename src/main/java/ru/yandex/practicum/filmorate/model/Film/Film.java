@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.model.Film;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -12,42 +13,115 @@ import ru.yandex.practicum.filmorate.validation.ReleaseDateAfter;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
- * Film.
+ * Фильм.
  */
 @Data
 public class Film {
 
     private Integer id;
-    @NotBlank
+
+    @NotBlank(message = "Название фильма не может быть пустым")
     private String name;
+
     @Size(max = 200, message = "Максимальная длина описания — 200 символов")
     private String description;
+
     @ReleaseDateAfter
     private LocalDate releaseDate;
+
     @Positive(message = "Продолжительность фильма должна быть положительным числом")
     private int duration;
-    private LinkedHashSet<Genre> genres;
+
+    /**
+     * Жанры фильма.
+     * Теперь это полноценные сущности из БД, а не enum.
+     */
+    private Set<Genre> genres = new LinkedHashSet<>();
+
+    /**
+     * Рейтинг MPA (внутреннее поле).
+     */
     private MpaRating rating;
 
+    /**
+     * Getter для JSON сериализации MPA рейтинга.
+     */
     @JsonGetter("mpa")
     public MpaRating getMpa() {
         return rating;
     }
 
+    /**
+     * Setter для JSON десериализации MPA рейтинга.
+     * Принимает объект вида {"id": 1} или {"id": 1, "name": "G"}
+     */
     @JsonSetter("mpa")
-    public void setMpa(Map<String, Integer> mpa) {
+    public void setMpa(Map<String, Object> mpa) {
         if (mpa == null || !mpa.containsKey("id")) {
             this.rating = null;
             return;
         }
-        int id = mpa.get("id");
+
+        // Получаем id из Map (может быть Integer или String)
+        Object idObj = mpa.get("id");
+        int id;
+        if (idObj instanceof Integer) {
+            id = (Integer) idObj;
+        } else if (idObj instanceof String) {
+            id = Integer.parseInt((String) idObj);
+        } else {
+            throw new IllegalArgumentException("MPA id должен быть числом");
+        }
+
+        // Валидация диапазона
         if (id < 1 || id > MpaRating.values().length) {
             throw new EntityNotFoundException("Рейтинг MPA с id " + id + " не найден");
         }
+
+        // Получаем enum по индексу (id - 1, т.к. enum начинается с 0)
         this.rating = MpaRating.values()[id - 1];
     }
 
+    /**
+     * Прямой setter для внутреннего использования.
+     */
+    public void setRating(MpaRating rating) {
+        this.rating = rating;
+    }
 
+    /**
+     * Добавить жанр к фильму.
+     */
+    public void addGenre(Genre genre) {
+        if (genres == null) {
+            genres = new LinkedHashSet<>();
+        }
+        genres.add(genre);
+    }
+
+    /**
+     * Удалить жанр из фильма.
+     */
+    public void removeGenre(Genre genre) {
+        if (genres != null) {
+            genres.remove(genre);
+        }
+    }
+
+    /**
+     * Установить жанры фильма.
+     */
+    public void setGenres(Set<Genre> genres) {
+        this.genres = genres != null ? new LinkedHashSet<>(genres) : new LinkedHashSet<>();
+    }
+
+    /**
+     * Получить жанры фильма.
+     */
+    public Set<Genre> getGenres() {
+        return genres != null ? genres : new LinkedHashSet<>();
+    }
 }
