@@ -11,9 +11,7 @@ import ru.yandex.practicum.filmorate.repository.repository.FriendRepository;
 import ru.yandex.practicum.filmorate.repository.repository.UserRepository;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Сервис для работы с пользователями.
