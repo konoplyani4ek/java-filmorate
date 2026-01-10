@@ -16,17 +16,24 @@ public class FilmRepository extends BaseRepository<Film> {
     private final MpaRatingRepository mpaRatingRepository;
 
     public FilmRepository(JdbcTemplate jdbc,
+                          FilmRowMapper filmRowMapper,
                           GenreRepository genreRepository,
                           MpaRatingRepository mpaRatingRepository) {
-        super(jdbc, new FilmRowMapper());
+        super(jdbc, filmRowMapper);
         this.genreRepository = genreRepository;
         this.mpaRatingRepository = mpaRatingRepository;
     }
 
     public Film create(Film film) {
-        int ratingId = mpaRatingRepository.getOrCreateId(film.getRating());
+        // ✅ ИЗМЕНЕНО: Получаем ID из MpaRating объекта
+        Integer ratingId = null;
+        if (film.getMpa() != null && film.getMpa().getId() != null) {
+            ratingId = film.getMpa().getId();
+        }
+
+        // ✅ ИЗМЕНЕНО: rating_id вместо mpa_rating_id
         long id = insert(
-                "insert into films(name, description, release_date, duration, mpa_rating_id) values (?, ?, ?, ?, ?)",
+                "INSERT INTO films(name, description, release_date, duration, rating_id) VALUES (?, ?, ?, ?, ?)",
                 film.getName(),
                 film.getDescription(),
                 film.getReleaseDate(),
@@ -34,14 +41,25 @@ public class FilmRepository extends BaseRepository<Film> {
                 ratingId
         );
         film.setId((int) id);
-        genreRepository.setGenresForFilm(film.getId(), film.getGenres());
+
+        // Сохранение жанров
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+            genreRepository.setGenresForFilm(film.getId(), film.getGenres());
+        }
+
         return film;
     }
 
     public Film update(Film film) {
-        int ratingId = mpaRatingRepository.getOrCreateId(film.getRating());
+        // ✅ ИЗМЕНЕНО: Получаем ID из MpaRating объекта
+        Integer ratingId = null;
+        if (film.getMpa() != null && film.getMpa().getId() != null) {
+            ratingId = film.getMpa().getId();
+        }
+
+        // ✅ ИЗМЕНЕНО: rating_id вместо mpa_rating_id
         update(
-                "update films set name = ?, description = ?, release_date = ?, duration = ?, mpa_rating_id = ? where film_id = ?",
+                "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, rating_id = ? WHERE film_id = ?",
                 film.getName(),
                 film.getDescription(),
                 film.getReleaseDate(),
@@ -49,47 +67,61 @@ public class FilmRepository extends BaseRepository<Film> {
                 ratingId,
                 film.getId()
         );
+
+        // Обновление жанров
         genreRepository.setGenresForFilm(film.getId(), film.getGenres());
+
         return film;
     }
 
     public boolean deleteById(int id) {
-        return delete("delete from films where film_id = ?", id);
+        return delete("DELETE FROM films WHERE film_id = ?", id);
     }
 
     public Optional<Film> findById(int id) {
+        // ✅ ИЗМЕНЕНО: Загружаем полные данные MPA
         Optional<Film> filmOpt = findOne(
-                "select f.film_id, f.name, f.description, f.release_date, f.duration, mr.name as mpa_name " +
-                        "from films f " +
-                        "join mpa_rating mr on mr.mpa_rating_id = f.mpa_rating_id " +
-                        "where f.film_id = ?",
+                "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, " +
+                        "       mr.rating_id, mr.name as mpa_name, mr.description as mpa_description " +
+                        "FROM films f " +
+                        "LEFT JOIN mpa_ratings mr ON mr.rating_id = f.rating_id " +
+                        "WHERE f.film_id = ?",
                 id
         );
+
         filmOpt.ifPresent(f -> {
+            // Загрузка жанров
             Set<Genre> genres = genreRepository.getGenresByFilmId(f.getId());
-            f.setGenres(new LinkedHashSet<>(genres));  // Convert to LinkedHashSet
+            f.setGenres(new LinkedHashSet<>(genres));
         });
+
         return filmOpt;
     }
 
     public List<Film> findAll() {
+        // ✅ ИЗМЕНЕНО: Загружаем полные данные MPA
         List<Film> films = findMany(
-                "select f.film_id, f.name, f.description, f.release_date, f.duration, mr.name as mpa_name " +
-                        "from films f " +
-                        "join mpa_rating mr on mr.mpa_rating_id = f.mpa_rating_id"
+                "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, " +
+                        "       mr.rating_id, mr.name as mpa_name, mr.description as mpa_description " +
+                        "FROM films f " +
+                        "LEFT JOIN mpa_ratings mr ON mr.rating_id = f.rating_id"
         );
 
         if (films.isEmpty()) {
             return films;
         }
 
-        Set<Integer> filmIds = films.stream().map(Film::getId).collect(Collectors.toSet());
+        // Загрузка жанров для всех фильмов
+        Set<Integer> filmIds = films.stream()
+                .map(Film::getId)
+                .collect(Collectors.toSet());
         Map<Integer, Set<Genre>> genresByFilm = genreRepository.getGenresByFilmIds(filmIds);
 
         for (Film f : films) {
             Set<Genre> genres = genresByFilm.getOrDefault(f.getId(), Set.of());
-            f.setGenres(new LinkedHashSet<>(genres));  // Convert to LinkedHashSet
+            f.setGenres(new LinkedHashSet<>(genres));
         }
+
         return films;
     }
 }

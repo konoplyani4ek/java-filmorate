@@ -7,14 +7,13 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film.Film;
 import ru.yandex.practicum.filmorate.model.Film.Genre;
-import ru.yandex.practicum.filmorate.repository.repository.FilmRepository;
-import ru.yandex.practicum.filmorate.repository.repository.GenreRepository;
-import ru.yandex.practicum.filmorate.repository.repository.LikeRepository;
-import ru.yandex.practicum.filmorate.repository.repository.UserRepository;
+import ru.yandex.practicum.filmorate.repository.repository.*;
 
+import javax.crypto.spec.GCMParameterSpec;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Сервис для работы с фильмами.
@@ -30,7 +29,7 @@ public class FilmService {
     private final LikeRepository likeRepository;
     private final UserRepository userRepository;
     private final GenreService genreService;
-
+    private final MpaRatingRepository mpaRepository;
     /**
      * Создать новый фильм.
      */
@@ -38,22 +37,32 @@ public class FilmService {
     public Film create(Film film) {
         log.info("Попытка создать фильм: {}", film.getName());
 
-        // Валидация жанров перед сохранением
+        // Валидация MPA
+        if (film.getMpa() != null && film.getMpa().getId() != null) {
+            if (!mpaRepository.existsById(film.getMpa().getId())) {
+                throw new EntityNotFoundException("Рейтинг MPA с id " + film.getMpa().getId() + " не найден");
+            }
+        }
+
+        // Валидация и заполнение полных данных жанров ПЕРЕД сохранением
         if (film.getGenres() != null && !film.getGenres().isEmpty()) {
             genreService.validateGenres(film.getGenres());
+
+            // ✅ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Заполнить полные данные жанров из БД
+            Set<Genre> fullGenres = film.getGenres().stream()
+                    .map(genre -> genreService.getGenreById(genre.getId()))
+                    .collect(Collectors.toSet());
+            film.setGenres(fullGenres);
         }
 
         // Создание фильма
         Film created = filmRepository.create(film);
 
-        // Загрузка жанров из БД (с правильными данными)
-        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
-            Set<Genre> genres = genreRepository.getGenresByFilmId(created.getId());
-            created.setGenres(genres);
-        }
+        // Загрузка фильма со всеми связями из БД
+        Film result = getFilmById(created.getId());
 
-        log.debug("Фильм создан с ID={}", created.getId());
-        return created;
+        log.debug("Фильм создан с ID={}", result.getId());
+        return result;
     }
 
     /**
@@ -123,6 +132,9 @@ public class FilmService {
     /**
      * Добавить лайк фильму от пользователя.
      */
+    /**
+     * Добавить лайк фильму от пользователя.
+     */
     @Transactional
     public void addLike(Integer filmId, Integer userId) {
         log.info("Пользователь с ID {} пытается поставить лайк фильму с ID {}", userId, filmId);
@@ -135,9 +147,10 @@ public class FilmService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Пользователь с ID " + userId + " не найден"));
 
-        // Проверка что лайк еще не поставлен
+        // ✅ ИСПРАВЛЕНИЕ: Если лайк уже есть - просто ничего не делаем
         if (likeRepository.hasLike(filmId, userId)) {
-            throw new IllegalStateException("Лайк уже поставлен пользователем с ID " + userId);
+            log.debug("Лайк уже поставлен пользователем с ID {}, пропускаем", userId);
+            return;
         }
 
         // Добавление лайка

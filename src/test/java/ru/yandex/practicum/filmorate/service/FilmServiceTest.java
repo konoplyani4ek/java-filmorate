@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.model.Film.Film;
 import ru.yandex.practicum.filmorate.model.Film.Genre;
+import ru.yandex.practicum.filmorate.model.Film.MpaRating;
 import ru.yandex.practicum.filmorate.model.User.User;
 import ru.yandex.practicum.filmorate.repository.repository.*;
 
@@ -29,6 +30,8 @@ class FilmServiceTest {
     private LikeRepository likeRepository;
     private UserRepository userRepository;
     private GenreService genreService;
+    private MpaRatingRepository mpaRepository;
+
 
     @BeforeEach
     void setUp() {
@@ -37,6 +40,7 @@ class FilmServiceTest {
         genreRepository = mock(GenreRepository.class);
         likeRepository = mock(LikeRepository.class);
         userRepository = mock(UserRepository.class);
+        mpaRepository = mock(MpaRatingRepository.class);
         genreService = mock(GenreService.class);
 
         // Создаем сервис с новой сигнатурой (5 параметров)
@@ -45,7 +49,7 @@ class FilmServiceTest {
                 genreRepository,
                 likeRepository,
                 userRepository,
-                genreService
+                genreService, mpaRepository
         );
 
         // Создаем контроллер
@@ -61,14 +65,26 @@ class FilmServiceTest {
         film.setReleaseDate(LocalDate.of(2020, 1, 1));
         film.setDuration(120);
 
+        MpaRating mpa = new MpaRating();
+        mpa.setId(1);
+        mpa.setName("G");
+        film.setMpa(mpa);
+
         Film createdFilm = new Film();
         createdFilm.setId(1);
         createdFilm.setName("Test Film");
         createdFilm.setDescription("Description");
         createdFilm.setReleaseDate(LocalDate.of(2020, 1, 1));
         createdFilm.setDuration(120);
+        createdFilm.setMpa(mpa);
+        createdFilm.setGenres(new LinkedHashSet<>());
 
+        // Моки
+        when(mpaRepository.existsById(1)).thenReturn(true);
+        when(mpaRepository.findById(1)).thenReturn(mpa);
         when(filmRepository.create(any(Film.class))).thenReturn(createdFilm);
+        when(filmRepository.findById(1)).thenReturn(Optional.of(createdFilm));
+        when(genreRepository.getGenresByFilmId(1)).thenReturn(new LinkedHashSet<>());
 
         // Act
         Film result = filmService.create(film);
@@ -249,19 +265,30 @@ class FilmServiceTest {
         genre.setId(1);
         genre.setName("Комедия");
 
+        MpaRating mpa = new MpaRating();
+        mpa.setId(1);
+        mpa.setName("G");
+
         Film film = new Film();
         film.setName("Test Film");
         film.setDescription("Description");
         film.setReleaseDate(LocalDate.of(2020, 1, 1));
         film.setDuration(120);
+        film.setMpa(mpa);
         film.setGenres(new LinkedHashSet<>(Arrays.asList(genre)));
 
         Film createdFilm = new Film();
         createdFilm.setId(1);
         createdFilm.setName("Test Film");
+        createdFilm.setMpa(mpa);
         createdFilm.setGenres(new LinkedHashSet<>(Arrays.asList(genre)));
 
+        // Моки
+        when(mpaRepository.existsById(1)).thenReturn(true);
+        when(mpaRepository.findById(1)).thenReturn(mpa);
+        when(genreService.getGenreById(1)).thenReturn(genre);
         when(filmRepository.create(any(Film.class))).thenReturn(createdFilm);
+        when(filmRepository.findById(1)).thenReturn(Optional.of(createdFilm));
         when(genreRepository.getGenresByFilmId(1)).thenReturn(new LinkedHashSet<>(Arrays.asList(genre)));
         doNothing().when(genreService).validateGenres(any());
 
@@ -271,5 +298,6 @@ class FilmServiceTest {
         // Assert
         assertNotNull(result.getId());
         verify(genreService, times(1)).validateGenres(any());
+        verify(genreService, times(1)).getGenreById(1); // Проверка заполнения жанров
     }
 }
