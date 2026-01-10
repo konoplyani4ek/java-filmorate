@@ -156,7 +156,7 @@ class FilmServiceTest {
     }
 
     @Test
-    void addLike_shouldThrowWhenAlreadyLiked() {
+    void addLike_shouldNotThrowWhenAlreadyLiked() {
         // Arrange
         Film film = new Film();
         film.setId(1);
@@ -168,10 +168,10 @@ class FilmServiceTest {
         when(userRepository.findById(2)).thenReturn(Optional.of(user));
         when(likeRepository.hasLike(1, 2)).thenReturn(true); // Уже есть лайк
 
-        // Act & Assert
-        assertThrows(IllegalStateException.class, () -> {
-            filmService.addLike(1, 2);
-        });
+        // Act - не должно выбросить исключение
+        filmService.addLike(1, 2);
+
+        // Assert - лайк НЕ добавляется повторно
         verify(likeRepository, never()).addLike(anyInt(), anyInt());
     }
 
