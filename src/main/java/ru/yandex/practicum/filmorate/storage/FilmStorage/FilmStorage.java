@@ -1,6 +1,6 @@
-package ru.yandex.practicum.filmorate.storage;
+package ru.yandex.practicum.filmorate.storage.FilmStorage;
 
-import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Film.Film;
 
 import java.util.Collection;
 import java.util.Optional;
