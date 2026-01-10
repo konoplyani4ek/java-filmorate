@@ -18,21 +18,21 @@ public class LikeRepository {
 
     public void addLike(int filmId, int userId) {
         jdbc.update(
-                "insert into user_likes(film_id, user_id) values (?, ?)",
+                "INSERT INTO likes(film_id, user_id) VALUES (?, ?)",
                 filmId, userId
         );
     }
 
     public void removeLike(int filmId, int userId) {
         jdbc.update(
-                "delete from user_likes where film_id = ? and user_id = ?",
+                "DELETE FROM likes WHERE film_id = ? AND user_id = ?",
                 filmId, userId
         );
     }
 
     public boolean hasLike(int filmId, int userId) {
         Integer cnt = jdbc.queryForObject(
-                "select count(*) from user_likes where film_id = ? and user_id = ?",
+                "SELECT COUNT(*) FROM likes WHERE film_id = ? AND user_id = ?",
                 Integer.class,
                 filmId, userId
         );
@@ -41,7 +41,7 @@ public class LikeRepository {
 
     public int countLikes(int filmId) {
         Integer cnt = jdbc.queryForObject(
-                "select count(*) from user_likes where film_id = ?",
+                "SELECT COUNT(*) FROM likes WHERE film_id = ?", // ✅ likes
                 Integer.class,
                 filmId
         );
@@ -50,7 +50,7 @@ public class LikeRepository {
 
     public Set<Integer> getUserIdsByFilm(int filmId) {
         List<Integer> ids = jdbc.queryForList(
-                "select user_id from user_likes where film_id = ?",
+                "SELECT user_id FROM likes WHERE film_id = ?", // ✅ likes
                 Integer.class,
                 filmId
         );
