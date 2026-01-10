@@ -29,6 +29,7 @@ public class FilmService {
     private final UserRepository userRepository;
     private final GenreService genreService;
     private final MpaRatingRepository mpaRepository;
+
     /**
      * Создать новый фильм.
      */
