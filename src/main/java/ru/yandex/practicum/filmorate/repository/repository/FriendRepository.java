@@ -4,18 +4,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.model.User.FriendshipStatus;
-import ru.yandex.practicum.filmorate.model.User.User;
+import ru.yandex.practicum.filmorate.model.user.FriendshipStatus;
+import ru.yandex.practicum.filmorate.model.user.User;
 import ru.yandex.practicum.filmorate.repository.mapper.UserRowMapper;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 
-/**
- * Репозиторий для работы с друзьями пользователей.
- * Использует enum FriendshipStatus, который хранится в БД как строка.
- */
 @Repository
 @RequiredArgsConstructor
 @Slf4j
@@ -23,22 +19,13 @@ public class FriendRepository {
 
     private final JdbcTemplate jdbc;
 
-    /**
-     * Проверить существование связи дружбы.
-     */
+    // Проверить существование связи дружбы
     public boolean exists(int userId, int friendId) {
         String sql = "SELECT COUNT(*) FROM friends WHERE user_id = ? AND friend_id = ?";
         Integer count = jdbc.queryForObject(sql, Integer.class, userId, friendId);
         return count != null && count > 0;
     }
 
-    /**
-     * Добавить друга.
-     *
-     * @param userId   ID пользователя, который добавляет в друзья
-     * @param friendId ID пользователя, которого добавляют в друзья
-     * @param status   Статус дружбы (PENDING или CONFIRMED)
-     */
     public void add(int userId, int friendId, FriendshipStatus status) {
         String sql = "INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, ?)";
 
@@ -49,27 +36,18 @@ public class FriendRepository {
         jdbc.update(sql, userId, friendId, statusString);
     }
 
-    /**
-     * Удалить друга.
-     */
     public void remove(int userId, int friendId) {
         String sql = "DELETE FROM friends WHERE user_id = ? AND friend_id = ?";
         log.debug("Removing friend: userId={}, friendId={}", userId, friendId);
         jdbc.update(sql, userId, friendId);
     }
 
-    /**
-     * Получить ID всех друзей пользователя.
-     */
     public Collection<Integer> findFriendIds(int userId) {
         String sql = "SELECT friend_id FROM friends WHERE user_id = ?";
         List<Integer> ids = jdbc.queryForList(sql, Integer.class, userId);
         return new HashSet<>(ids);
     }
 
-    /**
-     * Получить общих друзей двух пользователей.
-     */
     public List<User> getCommonFriends(int userId, int otherId) {
         String sql = """
                 SELECT u.*
@@ -83,11 +61,7 @@ public class FriendRepository {
         return jdbc.query(sql, new UserRowMapper(), userId, otherId);
     }
 
-    /**
-     * Получить всех друзей пользователя.
-     * Возвращает пользователей-друзей (без заполнения их friendIds).
-     * friendIds подгружаются отдельно в DbUserStorage при необходимости.
-     */
+    // Возвращает пользователей-друзей без заполнения их friendIds
     public List<User> findFriends(int userId) {
         String sql = """
                 SELECT u.*
@@ -100,11 +74,7 @@ public class FriendRepository {
         return jdbc.query(sql, new UserRowMapper(), userId);
     }
 
-    /**
-     * Получить статус дружбы между двумя пользователями.
-     *
-     * @return FriendshipStatus или null если связи нет
-     */
+    // return FriendshipStatus или null если связи нет
     public FriendshipStatus getStatus(int userId, int friendId) {
         String sql = "SELECT status FROM friends WHERE user_id = ? AND friend_id = ?";
 
@@ -128,9 +98,6 @@ public class FriendRepository {
         jdbc.update(sql, statusString, userId, friendId);
     }
 
-    /**
-     * Подтвердить дружбу (изменить статус на CONFIRMED).
-     */
     public void confirmFriendship(int userId, int friendId) {
         updateStatus(userId, friendId, FriendshipStatus.CONFIRMED);
     }

@@ -2,8 +2,8 @@ package ru.yandex.practicum.filmorate.repository.mapper;
 
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.filmorate.model.Film.Film;
-import ru.yandex.practicum.filmorate.model.Film.MpaRating;
+import ru.yandex.practicum.filmorate.model.film.Film;
+import ru.yandex.practicum.filmorate.model.film.MpaRating;
 
 
 import java.sql.ResultSet;
@@ -26,7 +26,6 @@ public class FilmRowMapper implements RowMapper<Film> {
 
         film.setDuration(rs.getInt("duration"));
 
-        // ✅ ИЗМЕНЕНО: Загрузка MpaRating как объекта
         Integer ratingId = (Integer) rs.getObject("rating_id");
         if (ratingId != null) {
             MpaRating mpa = new MpaRating();
@@ -49,7 +48,6 @@ public class FilmRowMapper implements RowMapper<Film> {
                     mpa.setDescription(mpaDescription);
                 }
             } catch (SQLException ignored) {
-                // Колонка может отсутствовать
             }
 
             film.setMpa(mpa);

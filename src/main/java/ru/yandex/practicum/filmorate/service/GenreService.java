@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
-import ru.yandex.practicum.filmorate.model.Film.Genre;
+import ru.yandex.practicum.filmorate.model.film.Genre;
 import ru.yandex.practicum.filmorate.repository.repository.GenreRepository;
 
 import java.util.Collection;
@@ -34,7 +34,6 @@ public class GenreService {
         return genre;
     }
 
-    //Проверить существование жанра.
     public boolean existsById(Integer id) {
         return genreRepository.existsById(id);
     }

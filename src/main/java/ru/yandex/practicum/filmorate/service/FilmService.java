@@ -5,8 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
-import ru.yandex.practicum.filmorate.model.Film.Film;
-import ru.yandex.practicum.filmorate.model.Film.Genre;
+import ru.yandex.practicum.filmorate.model.film.Film;
+import ru.yandex.practicum.filmorate.model.film.Genre;
 import ru.yandex.practicum.filmorate.repository.repository.*;
 
 import java.util.Collection;
@@ -14,10 +14,6 @@ import java.util.Comparator;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Сервис для работы с фильмами.
- * Содержит бизнес-логику, работает напрямую с репозиториями.
- */
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -30,9 +26,6 @@ public class FilmService {
     private final GenreService genreService;
     private final MpaRatingRepository mpaRepository;
 
-    /**
-     * Создать новый фильм.
-     */
     @Transactional
     public Film create(Film film) {
         log.info("Попытка создать фильм: {}", film.getName());
@@ -48,14 +41,13 @@ public class FilmService {
         if (film.getGenres() != null && !film.getGenres().isEmpty()) {
             genreService.validateGenres(film.getGenres());
 
-            // ✅ КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Заполнить полные данные жанров из БД
+            //  Заполнить полные данные жанров из БД
             Set<Genre> fullGenres = film.getGenres().stream()
                     .map(genre -> genreService.getGenreById(genre.getId()))
                     .collect(Collectors.toSet());
             film.setGenres(fullGenres);
         }
 
-        // Создание фильма
         Film created = filmRepository.create(film);
 
         // Загрузка фильма со всеми связями из БД
@@ -65,9 +57,6 @@ public class FilmService {
         return result;
     }
 
-    /**
-     * Обновить фильм.
-     */
     @Transactional
     public Film update(Film film) {
         log.info("Попытка обновить фильм с ID {}", film.getId());
@@ -81,7 +70,6 @@ public class FilmService {
             genreService.validateGenres(film.getGenres());
         }
 
-        // Обновление фильма
         Film updated = filmRepository.update(film);
 
         // Загрузка жанров из БД
@@ -92,31 +80,21 @@ public class FilmService {
         return updated;
     }
 
-    /**
-     * Получить все фильмы.
-     */
     public Collection<Film> getAllFilms() {
         log.info("Получение всех фильмов");
         return filmRepository.findAll();
     }
 
-    /**
-     * Получить фильм по ID.
-     */
     public Film getFilmById(Integer id) {
         log.info("Получение фильма с ID {}", id);
         return filmRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Фильм с id " + id + " не найден"));
     }
 
-    /**
-     * Удалить фильм.
-     */
     @Transactional
     public void deleteFilm(Integer id) {
         log.info("Удаление фильма с ID {}", id);
 
-        // Проверка существования
         filmRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Фильм с id " + id + " не найден"));
 
@@ -129,48 +107,32 @@ public class FilmService {
         log.info("Фильм с ID {} удален", id);
     }
 
-    /**
-     * Добавить лайк фильму от пользователя.
-     */
-    /**
-     * Добавить лайк фильму от пользователя.
-     */
     @Transactional
     public void addLike(Integer filmId, Integer userId) {
         log.info("Пользователь с ID {} пытается поставить лайк фильму с ID {}", userId, filmId);
 
-        // Проверка существования фильма
         filmRepository.findById(filmId)
                 .orElseThrow(() -> new EntityNotFoundException("Фильм с id " + filmId + " не найден"));
 
-        // Проверка существования пользователя
         userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Пользователь с ID " + userId + " не найден"));
 
-        // ✅ ИСПРАВЛЕНИЕ: Если лайк уже есть - просто ничего не делаем
         if (likeRepository.hasLike(filmId, userId)) {
             log.debug("Лайк уже поставлен пользователем с ID {}, пропускаем", userId);
             return;
         }
 
-        // Добавление лайка
         likeRepository.addLike(filmId, userId);
-
         log.info("Пользователь с ID {} поставил лайк фильму с ID {}", userId, filmId);
     }
 
-    /**
-     * Удалить лайк фильма от пользователя.
-     */
     @Transactional
     public void removeLike(Integer filmId, Integer userId) {
         log.info("Пользователь с ID {} пытается убрать лайк с фильма с ID {}", userId, filmId);
 
-        // Проверка существования фильма
         filmRepository.findById(filmId)
                 .orElseThrow(() -> new EntityNotFoundException("Фильм с id " + filmId + " не найден"));
 
-        // Проверка существования пользователя
         userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Пользователь с ID " + userId + " не найден"));
 
@@ -180,12 +142,7 @@ public class FilmService {
         log.info("Пользователь с ID {} убрал лайк с фильма с ID {}", userId, filmId);
     }
 
-    /**
-     * Получить топ самых популярных фильмов.
-     *
-     * @param limit Количество фильмов
-     * @return Список фильмов, отсортированных по количеству лайков
-     */
+    // Список фильмов, отсортированных по количеству лайков
     public Collection<Film> getTopMostLikedFilms(int limit) {
         log.info("Получение топ-{} самых популярных фильмов", limit);
 

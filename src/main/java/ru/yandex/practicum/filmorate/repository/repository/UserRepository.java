@@ -2,7 +2,7 @@ package ru.yandex.practicum.filmorate.repository.repository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.model.User.User;
+import ru.yandex.practicum.filmorate.model.user.User;
 import ru.yandex.practicum.filmorate.repository.mapper.UserRowMapper;
 
 import java.util.List;

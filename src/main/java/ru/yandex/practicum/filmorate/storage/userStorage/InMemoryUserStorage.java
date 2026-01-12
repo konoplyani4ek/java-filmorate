@@ -1,8 +1,8 @@
-package ru.yandex.practicum.filmorate.storage.UserStorage;
+package ru.yandex.practicum.filmorate.storage.userStorage;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.filmorate.model.User.User;
+import ru.yandex.practicum.filmorate.model.user.User;
 
 import java.util.*;
 import java.util.stream.Collectors;

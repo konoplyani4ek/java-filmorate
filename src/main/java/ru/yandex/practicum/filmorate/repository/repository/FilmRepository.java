@@ -2,8 +2,8 @@ package ru.yandex.practicum.filmorate.repository.repository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.model.Film.Film;
-import ru.yandex.practicum.filmorate.model.Film.Genre;
+import ru.yandex.practicum.filmorate.model.film.Film;
+import ru.yandex.practicum.filmorate.model.film.Genre;
 import ru.yandex.practicum.filmorate.repository.mapper.FilmRowMapper;
 
 import java.util.*;
@@ -25,13 +25,12 @@ public class FilmRepository extends BaseRepository<Film> {
     }
 
     public Film create(Film film) {
-        // ✅ ИЗМЕНЕНО: Получаем ID из MpaRating объекта
+        //Получаем ID из MpaRating объекта
         Integer ratingId = null;
         if (film.getMpa() != null && film.getMpa().getId() != null) {
             ratingId = film.getMpa().getId();
         }
 
-        // ✅ ИЗМЕНЕНО: rating_id вместо mpa_rating_id
         long id = insert(
                 "INSERT INTO films(name, description, release_date, duration, rating_id) VALUES (?, ?, ?, ?, ?)",
                 film.getName(),
@@ -51,13 +50,12 @@ public class FilmRepository extends BaseRepository<Film> {
     }
 
     public Film update(Film film) {
-        // ✅ ИЗМЕНЕНО: Получаем ID из MpaRating объекта
+        //  Получаем ID из MpaRating объекта
         Integer ratingId = null;
         if (film.getMpa() != null && film.getMpa().getId() != null) {
             ratingId = film.getMpa().getId();
         }
 
-        // ✅ ИЗМЕНЕНО: rating_id вместо mpa_rating_id
         update(
                 "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, rating_id = ? WHERE film_id = ?",
                 film.getName(),
@@ -79,7 +77,7 @@ public class FilmRepository extends BaseRepository<Film> {
     }
 
     public Optional<Film> findById(int id) {
-        // ✅ ИЗМЕНЕНО: Загружаем полные данные MPA
+        // Загружаем полные данные MPA
         Optional<Film> filmOpt = findOne(
                 "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, " +
                         "       mr.rating_id, mr.name as mpa_name, mr.description as mpa_description " +
@@ -99,7 +97,7 @@ public class FilmRepository extends BaseRepository<Film> {
     }
 
     public List<Film> findAll() {
-        // ✅ ИЗМЕНЕНО: Загружаем полные данные MPA
+        //  Загружаем полные данные MPA
         List<Film> films = findMany(
                 "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, " +
                         "       mr.rating_id, mr.name as mpa_name, mr.description as mpa_description " +

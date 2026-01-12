@@ -2,7 +2,7 @@ package ru.yandex.practicum.filmorate.repository.repository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.model.Film.MpaRating;
+import ru.yandex.practicum.filmorate.model.film.MpaRating;
 import ru.yandex.practicum.filmorate.repository.mapper.MpaRatingRowMapper;
 
 import java.util.List;

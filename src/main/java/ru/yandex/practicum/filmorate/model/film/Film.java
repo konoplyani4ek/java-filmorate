@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.model.Film;
+package ru.yandex.practicum.filmorate.model.film;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
@@ -34,11 +34,8 @@ public class Film {
     private Set<Genre> genres = new LinkedHashSet<>();
 
     @JsonProperty("mpa")
-    private MpaRating mpa;  // ✅ ИЗМЕНЕНО: теперь это класс, а не enum
+    private MpaRating mpa;
 
-    /**
-     * Добавить жанр к фильму.
-     */
     public void addGenre(Genre genre) {
         if (genres == null) {
             genres = new LinkedHashSet<>();
@@ -46,25 +43,16 @@ public class Film {
         genres.add(genre);
     }
 
-    /**
-     * Удалить жанр из фильма.
-     */
     public void removeGenre(Genre genre) {
         if (genres != null) {
             genres.remove(genre);
         }
     }
 
-    /**
-     * Установить жанры фильма.
-     */
     public void setGenres(Set<Genre> genres) {
         this.genres = genres != null ? new LinkedHashSet<>(genres) : new LinkedHashSet<>();
     }
 
-    /**
-     * Получить жанры фильма.
-     */
     public Set<Genre> getGenres() {
         return genres != null ? genres : new LinkedHashSet<>();
     }

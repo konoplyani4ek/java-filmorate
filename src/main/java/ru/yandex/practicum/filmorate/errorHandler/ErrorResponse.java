@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.ErrorHandler;
+package ru.yandex.practicum.filmorate.errorHandler;
 
 public record ErrorResponse(
         String message,

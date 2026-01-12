@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.model.User;
+package ru.yandex.practicum.filmorate.model.user;
 
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;

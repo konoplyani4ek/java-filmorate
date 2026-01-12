@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.model.Film;
+package ru.yandex.practicum.filmorate.model.film;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;

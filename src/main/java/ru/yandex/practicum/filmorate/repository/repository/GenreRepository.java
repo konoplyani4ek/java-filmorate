@@ -6,7 +6,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.model.Film.Genre;
+import ru.yandex.practicum.filmorate.model.film.Genre;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -29,18 +29,12 @@ public class GenreRepository {
         }
     };
 
-    /**
-     * Получить все жанры из БД.
-     */
     public List<Genre> findAll() {
         String sql = "SELECT genre_id, name FROM genres ORDER BY genre_id";
         log.debug("Executing query: {}", sql);
         return jdbc.query(sql, GENRE_ROW_MAPPER);
     }
 
-    /**
-     * Получить жанр по ID.
-     */
     public Optional<Genre> findById(Integer id) {
         String sql = "SELECT genre_id, name FROM genres WHERE genre_id = ?";
         log.debug("Executing query: {} with id={}", sql, id);
@@ -53,9 +47,6 @@ public class GenreRepository {
         }
     }
 
-    /**
-     * Получить жанры для конкретного фильма.
-     */
     public Set<Genre> getGenresByFilmId(Integer filmId) {
         String sql = "SELECT g.genre_id, g.name " +
                 "FROM genres g " +
@@ -99,10 +90,7 @@ public class GenreRepository {
         return result;
     }
 
-    /**
-     * Установить жанры для фильма.
-     * Удаляет старые связи и создает новые.
-     */
+    // Удаляет старые связи и создает новые
     public void setGenresForFilm(Integer filmId, Set<Genre> genres) {
         log.debug("Setting genres for film_id={}", filmId);
 
@@ -125,18 +113,13 @@ public class GenreRepository {
         }
     }
 
-    /**
-     * Удалить все жанры фильма.
-     */
     public void deleteGenresForFilm(Integer filmId) {
         String sql = "DELETE FROM film_genres WHERE film_id = ?";
         jdbc.update(sql, filmId);
         log.debug("Deleted all genres for film_id={}", filmId);
     }
 
-    /**
-     * Проверить существование жанра.
-     */
+    // проверить существование жанра
     public boolean existsById(Integer id) {
         String sql = "SELECT COUNT(*) FROM genres WHERE genre_id = ?";
         Integer count = jdbc.queryForObject(sql, Integer.class, id);

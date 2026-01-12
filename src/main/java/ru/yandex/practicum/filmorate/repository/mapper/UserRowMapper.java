@@ -1,7 +1,7 @@
 package ru.yandex.practicum.filmorate.repository.mapper;
 
 import org.springframework.jdbc.core.RowMapper;
-import ru.yandex.practicum.filmorate.model.User.User;
+import ru.yandex.practicum.filmorate.model.user.User;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

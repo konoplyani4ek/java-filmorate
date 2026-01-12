@@ -41,7 +41,7 @@ public class LikeRepository {
 
     public int countLikes(int filmId) {
         Integer cnt = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM likes WHERE film_id = ?", // ✅ likes
+                "SELECT COUNT(*) FROM likes WHERE film_id = ?",
                 Integer.class,
                 filmId
         );
@@ -50,7 +50,7 @@ public class LikeRepository {
 
     public Set<Integer> getUserIdsByFilm(int filmId) {
         List<Integer> ids = jdbc.queryForList(
-                "SELECT user_id FROM likes WHERE film_id = ?", // ✅ likes
+                "SELECT user_id FROM likes WHERE film_id = ?",
                 Integer.class,
                 filmId
         );
