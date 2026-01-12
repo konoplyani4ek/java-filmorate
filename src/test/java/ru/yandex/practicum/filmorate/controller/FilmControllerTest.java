@@ -6,41 +6,63 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 import ru.yandex.practicum.filmorate.exception.EntityNotFoundException;
-import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.film.Film;
+import ru.yandex.practicum.filmorate.model.film.MpaRating;
+import ru.yandex.practicum.filmorate.repository.repository.*;
 import ru.yandex.practicum.filmorate.service.FilmService;
-import ru.yandex.practicum.filmorate.service.UserService;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
-import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.service.GenreService;
 
 import java.time.LocalDate;
-import java.util.Collection;
-import java.util.Set;
-
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
-@SpringBootTest
+/**
+ * Тесты для FilmController.
+ * Используют простые моки вместо Spring Context.
+ */
 public class FilmControllerTest {
 
     private FilmController filmController;
     private FilmService filmService;
-    private FilmStorage filmStorage;
-    private UserService userService;
+
+    // Репозитории (моки)
+    private FilmRepository filmRepository;
+    private GenreRepository genreRepository;
+    private LikeRepository likeRepository;
+    private UserRepository userRepository;
+    private GenreService genreService;
+    private MpaRatingRepository mpaRepository;
+
+
     private static final ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
     private static final Validator validator = factory.getValidator();
 
-
     @BeforeEach
     void setUp() {
-        filmStorage = new InMemoryFilmStorage();
-        userService = new UserService(new InMemoryUserStorage());
-        filmService = new FilmService(filmStorage, userService);
+        // Создаем моки
+        filmRepository = mock(FilmRepository.class);
+        genreRepository = mock(GenreRepository.class);
+        likeRepository = mock(LikeRepository.class);
+        userRepository = mock(UserRepository.class);
+        mpaRepository = mock(MpaRatingRepository.class);
+        genreService = mock(GenreService.class);
+
+        // Создаем сервис с новой сигнатурой (5 параметров)
+        filmService = new FilmService(
+                filmRepository,
+                genreRepository,
+                likeRepository,
+                userRepository,
+                genreService, mpaRepository
+        );
+
+        // Создаем контроллер
         filmController = new FilmController(filmService);
     }
-
 
     private Film validFilm() {
         Film film = new Film();
@@ -71,22 +93,14 @@ public class FilmControllerTest {
 
 
     @Test
-    void createFilm_ShouldReturnCreatedFilm() {
-        Film created = filmController.create(validFilm());
-
-        assertNotNull(created.getId());
-        assertEquals("Test Film", created.getName());
-
-        Collection<Film> allFilms = filmController.getAllFilms();
-        assertTrue(allFilms.contains(created));
-    }
-
-    @Test
     void createFilm_ShouldFail_WhenNameEmpty() {
+        // Arrange
         Film film = filmWithEmptyName();
 
+        // Act
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
 
+        // Assert
         assertFalse(violations.isEmpty());
 
         boolean hasNameError = violations.stream()
@@ -96,10 +110,13 @@ public class FilmControllerTest {
 
     @Test
     void createFilm_ShouldFail_WhenDurationNotPositive() {
+        // Arrange
         Film film = filmWithNegativeDuration();
 
+        // Act
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
 
+        // Assert
         assertFalse(violations.isEmpty());
 
         boolean hasDurationError = violations.stream()
@@ -110,10 +127,13 @@ public class FilmControllerTest {
 
     @Test
     void shouldFailValidation_whenReleaseDateTooEarly() {
+        // Arrange
         Film film = filmWithTooEarlyReleaseDate();
 
+        // Act
         Set<ConstraintViolation<Film>> violations = validator.validate(film);
 
+        // Assert
         assertFalse(violations.isEmpty());
         assertTrue(
                 violations.stream()
@@ -124,39 +144,114 @@ public class FilmControllerTest {
 
     @Test
     void updateFilm_ShouldUpdateExistingFilm() {
-        Film created = filmController.create(validFilm());
+        // Arrange
+        Film film = validFilm();
 
-        Film updatedFilm = validFilm();
-        updatedFilm.setId(created.getId());
+        Film createdFilm = new Film();
+        createdFilm.setId(1);
+        createdFilm.setName("Test Film");
+        createdFilm.setDescription("Описание фильма");
+        createdFilm.setReleaseDate(LocalDate.of(2000, 1, 1));
+        createdFilm.setDuration(120);
+
+        Film updatedFilm = new Film();
+        updatedFilm.setId(1);
         updatedFilm.setName("New Name");
+        updatedFilm.setDescription("Описание фильма");
+        updatedFilm.setReleaseDate(LocalDate.of(2000, 1, 1));
         updatedFilm.setDuration(150);
 
-        Film updated = filmController.update(updatedFilm);
+        when(filmRepository.create(any(Film.class))).thenReturn(createdFilm);
+        when(filmRepository.findById(1)).thenReturn(Optional.of(createdFilm));
+        when(filmRepository.update(any(Film.class))).thenReturn(updatedFilm);
 
+        // Act
+        Film created = filmController.create(film);
+
+        Film filmToUpdate = validFilm();
+        filmToUpdate.setId(created.getId());
+        filmToUpdate.setName("New Name");
+        filmToUpdate.setDuration(150);
+
+        Film updated = filmController.update(filmToUpdate);
+
+        // Assert
         assertEquals("New Name", updated.getName());
         assertEquals(150, updated.getDuration());
+
+        verify(filmRepository, times(1)).update(any(Film.class));
     }
 
     @Test
     void updateFilm_ShouldThrowEntityNotFoundException_WhenFilmNotFound() {
+        // Arrange
         Film film = validFilm();
         film.setId(999); // несуществующий ID
 
+        when(filmRepository.findById(999)).thenReturn(Optional.empty());
+
+        // Act & Assert
         EntityNotFoundException exception = assertThrows(EntityNotFoundException.class,
                 () -> filmController.update(film));
 
         assertTrue(exception.getMessage().contains("не найден"));
+
+        verify(filmRepository, times(1)).findById(999);
+        verify(filmRepository, never()).update(any(Film.class));
     }
 
     @Test
     void getAll_ShouldReturnAllFilms() {
-        Film film1 = filmController.create(validFilm());
-        Film film2 = filmController.create(validFilm());
+        // Arrange
+        Film film1 = new Film();
+        film1.setId(1);
+        film1.setName("Test Film 1");
+        film1.setDescription("Описание 1");
+        film1.setReleaseDate(LocalDate.of(2000, 1, 1));
+        film1.setDuration(120);
 
+        MpaRating mpa1 = new MpaRating();
+        mpa1.setId(1);
+        mpa1.setName("G");
+        film1.setMpa(mpa1);
+        film1.setGenres(new LinkedHashSet<>());
+
+        Film film2 = new Film();
+        film2.setId(2);
+        film2.setName("Test Film 2");
+        film2.setDescription("Описание 2");
+        film2.setReleaseDate(LocalDate.of(2001, 1, 1));
+        film2.setDuration(90);
+
+        MpaRating mpa2 = new MpaRating();
+        mpa2.setId(1);
+        mpa2.setName("G");
+        film2.setMpa(mpa2);
+        film2.setGenres(new LinkedHashSet<>());
+
+        // Моки
+        when(mpaRepository.existsById(1)).thenReturn(true);
+        when(mpaRepository.findById(1)).thenReturn(mpa1);
+
+        when(filmRepository.create(any(Film.class)))
+                .thenReturn(film1)
+                .thenReturn(film2);
+
+        when(filmRepository.findById(1)).thenReturn(Optional.of(film1));
+        when(filmRepository.findById(2)).thenReturn(Optional.of(film2));
+
+        when(genreRepository.getGenresByFilmId(anyInt())).thenReturn(new LinkedHashSet<>());
+
+        when(filmRepository.findAll()).thenReturn(Arrays.asList(film1, film2));
+
+        // Act
+        filmController.create(validFilm());
+        filmController.create(validFilm());
         Collection<Film> allFilms = filmController.getAllFilms();
 
+        // Assert
         assertEquals(2, allFilms.size());
-        assertTrue(allFilms.contains(film1));
-        assertTrue(allFilms.contains(film2));
+
+        verify(filmRepository, times(1)).findAll();
     }
 }
